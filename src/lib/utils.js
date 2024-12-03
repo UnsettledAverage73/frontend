@@ -1,4 +1,5 @@
-export function mergeClasses(...classes) {
-    return classes.filter(Boolean).join(" ");
-  }
-  
+// utils.js
+export function cn(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
+

@@ -1,6 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { Switch } from './switch';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './alert-dialog';
+import React, { useState } from 'react';
+import { X } from 'lucide-react';
+import { Button } from "./button";
+import { Switch } from "./ui/switch";
+import { cn } from "../lib/utils";
 
 const auditDirectories = [
   { 
@@ -31,6 +33,93 @@ const auditDirectories = [
   }
 ];
 
+// Backup Panel Component
+const BackupPanel = ({ 
+  isOpen, 
+  onClose, 
+  backups,
+  onViewBackup 
+}) => {
+  return (
+    <div
+      className={cn(
+        "fixed inset-y-0 right-0 w-80 bg-zinc-950 text-zinc-50 shadow-lg transform transition-transform duration-300 ease-in-out z-50",
+        isOpen ? "translate-x-0" : "translate-x-full"
+      )}
+    >
+      <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-semibold">System Backups</h2>
+          <Switch className="data-[state=checked]:bg-pink-400" />
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </Button>
+      </div>
+      <div className="overflow-auto max-h-[calc(100vh-64px)]">
+        {backups.length === 0 ? (
+          <div className="p-4 text-center text-zinc-400">
+            No backups available
+          </div>
+        ) : (
+          backups.map((backup) => (
+            <div
+              key={backup.id}
+              className="p-4 border-b border-zinc-800 relative group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Backup</span>
+                    <span className="text-sm text-zinc-400">
+                      {new Date(backup.timestamp).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-300 mt-1">
+                    {backup.description}
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <Button 
+                      variant="secondary" 
+                      className="flex-1 bg-zinc-800 hover:bg-zinc-700"
+                      onClick={() => onViewBackup?.(backup.id)}
+                    >
+                      Restore
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      className="flex-1 bg-zinc-800 hover:bg-zinc-700"
+                    >
+                      Details
+                    </Button>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Dismiss</span>
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 const AdvancedAuditExecutor = () => {
   const [selectedAudits, setSelectedAudits] = useState([]);
   const [executionLogs, setExecutionLogs] = useState('');
@@ -38,244 +127,165 @@ const AdvancedAuditExecutor = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [progress, setProgress] = useState(0);
   const [isDryRun, setIsDryRun] = useState(false);
+  
+  // Backup-related states
   const [backups, setBackups] = useState([]);
-  const [currentBackupId, setCurrentBackupId] = useState(null);
-  const [isBackupInProgress, setIsBackupInProgress] = useState(false);
-  const [isRollbackInProgress, setIsRollbackInProgress] = useState(false);
-
-  // Handle audit selection
-  const handleAuditSelect = (scriptName) => {
-    setSelectedAudits(prev => {
-      if (prev.includes(scriptName)) {
-        return prev.filter(name => name !== scriptName);
-      } else {
-        return [...prev, scriptName];
-      }
-    });
-  };
+  const [isBackupPanelOpen, setIsBackupPanelOpen] = useState(false);
 
   // Create backup
   const createBackup = async () => {
-    setIsBackupInProgress(true);
-    setExecutionLogs(prev => prev + '\nCreating system backup...\n');
+    const backupId = Date.now().toString();
+    const newBackup = {
+      id: backupId,
+      timestamp: new Date().toISOString(),
+      description: `Backup of ${selectedAudits.length} audit scripts`
+    };
 
+    setExecutionLogs(prev => prev + '\nCreating system backup...\n');
+    
     try {
       // Simulate backup creation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const backupId = Date.now().toString();
-      const newBackup = {
-        id: backupId,
-        timestamp: new Date().toISOString(),
-        scripts: selectedAudits,
-        state: 'Complete',
-        description: `Backup before executing: ${selectedAudits.join(', ')}`
-      };
-
       setBackups(prev => [...prev, newBackup]);
-      setCurrentBackupId(backupId);
-      setExecutionLogs(prev => prev + `Backup created successfully. Backup ID: ${backupId}\n`);
+      setExecutionLogs(prev => prev + `Backup created successfully. ID: ${backupId}\n`);
       
       return backupId;
     } catch (error) {
       setExecutionLogs(prev => prev + `Error creating backup: ${error.message}\n`);
       throw error;
-    } finally {
-      setIsBackupInProgress(false);
     }
   };
 
-  // Rollback to backup
-  const performRollback = async (backupId) => {
-    setIsRollbackInProgress(true);
-    setExecutionLogs(prev => prev + `\nInitiating rollback to backup ${backupId}...\n`);
-
-    try {
-      // Simulate rollback process
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const backup = backups.find(b => b.id === backupId);
-      setExecutionLogs(prev => prev + 
-        `Rolling back the following scripts:\n${backup.scripts.join('\n')}\n` +
-        `Restoring system state from backup...\n` +
-        `Verifying system integrity...\n` +
-        `Rollback completed successfully.\n`
-      );
-
-      // Clear current results after rollback
-      setAuditResults([]);
-      setProgress(0);
-    } catch (error) {
-      setExecutionLogs(prev => prev + `Error during rollback: ${error.message}\n`);
-    } finally {
-      setIsRollbackInProgress(false);
+  // View backup details
+  const handleViewBackup = (backupId) => {
+    const backup = backups.find(b => b.id === backupId);
+    if (backup) {
+      alert(`Backup Details:\nID: ${backup.id}\nTimestamp: ${backup.timestamp}\nDescription: ${backup.description}`);
     }
   };
 
-  // Simulate dry run execution
-  const simulateDryRun = async (auditName) => {
-    return {
-      status: 'simulated',
-      details: `Dry run simulation for ${auditName}:\n` +
-        `- Command validation: OK\n` +
-        `- Required permissions: Verified\n` +
-        `- Estimated execution time: 2-3 seconds\n` +
-        `- Target resources: Identified\n` +
-        `- Backup requirement: Yes\n` +
-        `No actual changes will be made to the system.`
-    };
-  };
-
-  // Execute selected audits
-  const executeAudits = async () => {
-    setExecutionLogs('');
-    setAuditResults([]);
-    setProgress(0);
-
-    const mode = isDryRun ? 'DRY RUN' : 'LIVE';
-    setExecutionLogs(`Starting ${mode} execution...\n`);
-
-    try {
-      // Create backup before execution (unless it's a dry run)
-      if (!isDryRun) {
-        await createBackup();
-      }
-
-      for (let i = 0; i < selectedAudits.length; i++) {
-        const auditName = selectedAudits[i];
-        setExecutionLogs(prev => prev + `\nExecuting ${auditName}...\n`);
-
-        try {
-          if (isDryRun) {
-            const dryRunResult = await simulateDryRun(auditName);
-            setExecutionLogs(prev => prev + dryRunResult.details + '\n');
-            setAuditResults(prev => [...prev, {
-              name: auditName,
-              status: dryRunResult.status,
-              details: dryRunResult.details
-            }]);
-          } else {
-            await new Promise((resolve, reject) => {
-              setTimeout(() => {
-                if (Math.random() < 0.1) {
-                  reject(new Error('Audit failed'));
-                } else {
-                  resolve();
-                }
-              }, 1000);
-            });
-
-            const passed = Math.random() < 0.7;
-            const status = passed ? 'passed' : 'failed';
-            
-            setExecutionLogs(prev => prev + `${auditName} ${status}\n`);
-            setAuditResults(prev => [...prev, {
-              name: auditName,
-              status,
-              details: passed ? 'All checks passed' : 'Some checks failed'
-            }]);
-          }
-        } catch (error) {
-          setExecutionLogs(prev => prev + `Error executing ${auditName}: ${error.message}\n`);
-          setAuditResults(prev => [...prev, {
-            name: auditName,
-            status: 'error',
-            details: `Execution failed: ${error.message}`
-          }]);
-        }
-
-        setProgress(((i + 1) / selectedAudits.length) * 100);
-      }
-    } catch (error) {
-      setExecutionLogs(prev => prev + `Execution failed: ${error.message}\n`);
-    }
-  };
-
-  // Render backup list
-  const renderBackups = () => {
-    if (backups.length === 0) {
-      return <p className="text-gray-500 italic">No backups available</p>;
-    }
-
-    return backups.map(backup => (
-      <div key={backup.id} className="border rounded p-2 mb-2">
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="font-medium">Backup ID: {backup.id}</div>
-            <div className="text-sm text-gray-600">
-              {new Date(backup.timestamp).toLocaleString()}
-            </div>
-          </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button 
-                className="px-3 py-1 bg-yellow-500 text-white rounded text-sm"
-                disabled={isRollbackInProgress}
-              >
-                Rollback
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Rollback</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to rollback to this backup? This will revert all changes made after this backup was created.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => performRollback(backup.id)}>
-                  Confirm Rollback
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-        <div className="text-sm mt-1">{backup.description}</div>
-      </div>
-    ));
-  };
-
-  // Render tree structure
+  // Render Audit Tree (existing method)
   const renderAuditTree = () => {
-    return auditDirectories.map(dir => (
-      <div key={dir.name} className="ml-4">
-        <div className="font-semibold">{dir.name}</div>
-        {dir.subDirectories.map(subDir => (
-          <div key={subDir.name} className="ml-4">
-            <div className="font-medium">{subDir.name}</div>
-            {subDir.scripts
-              .filter(script => script.toLowerCase().includes(searchTerm.toLowerCase()))
-              .map(script => (
-                <div key={script} className="ml-4 flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={selectedAudits.includes(script)}
-                    onChange={() => handleAuditSelect(script)}
-                    className="mr-2"
-                  />
-                  <span>{script}</span>
-                </div>
-              ))}
-          </div>
-        ))}
-      </div>
-    ));
+    return auditDirectories.map((dir) => {
+      const subDirs = dir.subDirectories.filter((subDir) =>
+        subDir.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      return (
+        <div key={dir.name} className="mb-4">
+          <h3 className="font-bold text-lg">{dir.name}</h3>
+          {subDirs.map((subDir) => (
+            <div key={subDir.name} className="ml-4">
+              <h4 className="font-medium text-md">{subDir.name}</h4>
+              <ul className="ml-4">
+                {subDir.scripts.map((script) => (
+                  <li key={script}>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedAudits.includes(script)}
+                        onChange={(e) => handleAuditSelection(script, e.target.checked)}
+                        className="form-checkbox"
+                      />
+                      <span className="text-sm">{script}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      );
+    });
+  };
+
+  // Handle audit selection toggle
+  const handleAuditSelection = (script, isChecked) => {
+    setSelectedAudits((prev) =>
+      isChecked ? [...prev, script] : prev.filter((item) => item !== script)
+    );
+  };
+
+  // Execute audits
+  const executeAudits = async () => {
+    // Create backup before execution
+    await createBackup();
+
+    setExecutionLogs((prev) => prev + '\nExecuting selected audits...\n');
+    setProgress(0);
+    setAuditResults([]);
+
+    try {
+      const totalAudits = selectedAudits.length;
+      for (let i = 0; i < totalAudits; i++) {
+        const audit = selectedAudits[i];
+        
+        // Simulate audit execution
+        setExecutionLogs((prev) => prev + `Running: ${audit}\n`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        
+        // Update progress and logs
+        const status = isDryRun ? 'simulated' : 'passed';
+        setAuditResults((prev) => [...prev, {
+          name: audit,
+          status: status,
+          details: isDryRun ? 'Simulated audit execution' : 'Audit passed successfully'
+        }]);
+        
+        setExecutionLogs((prev) => prev + `Completed: ${audit}\n`);
+        setProgress(((i + 1) / totalAudits) * 100);
+      }
+
+      setExecutionLogs((prev) => prev + (isDryRun 
+        ? 'Simulation completed successfully.\n' 
+        : 'All audits executed successfully.\n')
+      );
+    } catch (error) {
+      setExecutionLogs((prev) => prev + `Error during execution: ${error.message}\n`);
+      setAuditResults((prev) => [...prev, {
+        name: 'Execution Error',
+        status: 'failed',
+        details: error.message
+      }]);
+    } finally {
+      setProgress(100);
+    }
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Advanced Audit Executor</h1>
+    <div className="container mx-auto p-4 relative">
+      {/* Backup Panel */}
+      <BackupPanel 
+        isOpen={isBackupPanelOpen}
+        onClose={() => setIsBackupPanelOpen(false)}
+        backups={backups}
+        onViewBackup={handleViewBackup}
+      />
+
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Advanced Audit Executor</h1>
+        
+        {/* Backup Button */}
+        <Button 
+          variant="outline"
+          onClick={() => setIsBackupPanelOpen(true)}
+          className="flex items-center gap-2"
+        >
+          Backups ({backups.length})
+        </Button>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Audit Selection Panel */}
         <div className="border rounded-lg p-4">
           <h2 className="text-xl font-semibold mb-2">Select Audits</h2>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
-              <Switch
+              <input
+                type="checkbox"
                 checked={isDryRun}
-                onCheckedChange={setIsDryRun}
+                onChange={(e) => setIsDryRun(e.target.checked)}
+                className="form-checkbox"
               />
               <span className="text-sm">
                 Dry Run Mode {isDryRun ? "(Enabled)" : "(Disabled)"}
@@ -294,8 +304,12 @@ const AdvancedAuditExecutor = () => {
           </div>
           <button
             onClick={executeAudits}
-            disabled={selectedAudits.length === 0 || isBackupInProgress || isRollbackInProgress}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+            disabled={selectedAudits.length === 0}
+            className={`w-full mt-4 px-4 py-2 rounded ${
+              selectedAudits.length === 0 
+              ? 'bg-gray-300 text-gray-600' 
+              : 'bg-green-500 text-white'
+            }`}
           >
             {isDryRun ? "Run Simulation" : "Execute"} ({selectedAudits.length})
           </button>
@@ -304,9 +318,9 @@ const AdvancedAuditExecutor = () => {
         {/* Execution Logs Panel */}
         <div className="border rounded-lg p-4">
           <h2 className="text-xl font-semibold mb-2">Execution Logs</h2>
-          <pre className="whitespace-pre-wrap bg-gray-100 p-2 rounded h-96 overflow-auto">
-            {executionLogs}
-          </pre>
+          <div className="overflow-auto max-h-96 bg-gray-100 p-2 rounded border">
+            <pre className="text-sm whitespace-pre-wrap">{executionLogs || 'No logs available yet.'}</pre>
+          </div>
         </div>
 
         {/* Results Panel */}
@@ -342,14 +356,6 @@ const AdvancedAuditExecutor = () => {
               <p className="text-sm text-center mt-1">{Math.round(progress)}% Complete</p>
             </div>
           )}
-        </div>
-
-        {/* Backups Panel */}
-        <div className="border rounded-lg p-4">
-          <h2 className="text-xl font-semibold mb-2">System Backups</h2>
-          <div className="space-y-2 overflow-auto max-h-96">
-            {renderBackups()}
-          </div>
         </div>
       </div>
     </div>

@@ -1,16 +1,8 @@
-import React, { useState, Suspense } from 'react';
-import { History, Laptop2, Shield, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Laptop2, Shield, History } from 'lucide-react';
 import { Button } from './button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 import { useNavigate } from 'react-router-dom';
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { history } from './history'
-import { devices } from './devices'
-
-
-// Lazy load the AdvancedAuditExecutor component
-const AdvancedAuditExecutor = React.lazy(() => import('./AdvancedAuditExecutor'));
 
 // Device grid component
 const DevicesGrid = () => {
@@ -39,32 +31,6 @@ const DevicesGrid = () => {
   );
 };
 
-// Sidebar component
-const Sidebar = () => {
-  const navigate = useNavigate();
-
-  return (
-    <div className="flex flex-col space-y-2 p-4">
-      <Button
-        variant="ghost"
-        className="w-full justify-start text-white hover:bg-white/10"
-        onClick={() => navigate('/history')}
-      >
-        <History className="mr-2 h-4 w-4" />
-        History
-      </Button>
-      <Button
-        variant="ghost"
-        className="w-full justify-start text-white hover:bg-white/10"
-        onClick={() => navigate('/devices')}
-      >
-        <Laptop2 className="mr-2 h-4 w-4" />
-        Devices
-      </Button>
-    </div>
-  );
-};
-
 // Main Initial Page component
 const InitialPage = () => {
   const navigate = useNavigate();
@@ -82,7 +48,25 @@ const InitialPage = () => {
     <div className="min-h-screen flex flex-col bg-black text-white">
       {/* Top Bar */}
       <header className="border-b border-white/10 bg-black/95 backdrop-blur">
-        <div className="flex h-14 items-center px-4">
+        <div className="flex h-14 items-center px-10">
+          <div className="absolute left-4 flex flex-col space-y-2">
+            <Button
+              variant="ghost"
+              className="text-white hover:bg-white/10"
+              onClick={() => navigate('/history')}
+            >
+              <History className="mr-2 h-10 w-4" />
+              History
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-white hover:bg-white/10"
+              onClick={() => navigate('/devices')}
+            >
+              <Laptop2 className="mr-2 h-4 w-4" />
+              Devices
+            </Button>
+          </div>
           <div className="flex-1 text-center">
             <h1 className="text-xl font-bold flex items-center justify-center">
               <Shield className="mr-2 h-6 w-6" />
@@ -92,32 +76,25 @@ const InitialPage = () => {
         </div>
       </header>
 
-      <div className="flex-1 flex">
-        {/* Left Sidebar - Hidden on mobile */}
-        <aside className="hidden md:flex w-[300px] flex-col border-r border-white/10 bg-black/40">
-          <Sidebar onDevicesClick={() => setDevicesOpen(true)} />
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col p-6">
-          <div className="flex-1 flex flex-col items-center justify-center gap-8">
-            <Button variant="default" size="lg" className="w-[250px] bg-blue-800 hover:bg-blue-900">
-              Complete Checks
-            </Button>
-            <Button variant="default" size="lg" className="w-[250px] bg-green-800 hover:bg-green-900">
-              Complete Fix
-            </Button>
-            <Button
-              variant="default"
-              size="lg"
-              className="w-[250px] bg-purple-800 hover:bg-purple-900"
-              onClick={handleExpertModeToggle}
-            >
-              Enter Expert Mode
-            </Button>
-          </div>
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col p-6">
+        <div className="flex-1 flex flex-col items-center justify-center gap-8">
+          <Button variant="default" size="lg" className="w-[250px] bg-blue-800 hover:bg-blue-900">
+            Complete Checks
+          </Button>
+          <Button variant="default" size="lg" className="w-[250px] bg-green-800 hover:bg-green-900">
+            Complete Fix
+          </Button>
+          <Button
+            variant="default"
+            size="lg"
+            className="w-[250px] bg-purple-800 hover:bg-purple-900"
+            onClick={handleExpertModeToggle}
+          >
+            Enter Expert Mode
+          </Button>
+        </div>
+      </main>
 
       {/* Devices Dialog */}
       <Dialog open={devicesOpen} onOpenChange={setDevicesOpen}>
@@ -136,3 +113,4 @@ const InitialPage = () => {
 };
 
 export default InitialPage;
+

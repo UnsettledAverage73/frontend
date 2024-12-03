@@ -1,8 +1,8 @@
 import React from 'react';
 import InitialPage from './components/InitialPage';
 import AdvancedAuditExecutor from './components/AdvancedAuditExecutor';
-import history from './components/history'
-import devices from './components/devices'
+import History from './components/history'
+import Devices from './components/devices'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 function App() {
@@ -10,8 +10,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<InitialPage />} />
-        <Route path="/history" element={<history />} />
-         <Route path="/devices" element={<devices />} />
+        <Route path="/history" element={<History />} />
+         <Route path="/devices" element={<Devices />} />
         <Route path="/advanced-audit" element={<AdvancedAuditExecutor />} />
       </Routes>
     </Router>
