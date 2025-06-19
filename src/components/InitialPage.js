@@ -19,7 +19,7 @@ const DevicesGrid = () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {devices.map((device) => (
         <div key={device.id} className="bg-black/10 p-4 rounded-lg border border-white/10">
           <h3 className="font-semibold text-white">{device.name}</h3>
@@ -48,8 +48,9 @@ const InitialPage = () => {
     <div className="min-h-screen flex flex-col bg-black text-white">
       {/* Top Bar */}
       <header className="border-b border-white/10 bg-black/95 backdrop-blur">
-        <div className="flex h-14 items-center px-10">
-          <div className="absolute left-4 flex flex-col space-y-2">
+        <div className="relative flex h-14 items-center justify-center px-4 sm:px-10">
+          {/* Left: Button group, absolutely positioned */}
+          <div className="absolute left-4 flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4">
             <Button
               variant="ghost"
               className="text-white hover:bg-white/10"
@@ -67,28 +68,30 @@ const InitialPage = () => {
               Devices
             </Button>
           </div>
-          <div className="flex-1 text-center">
-            <h1 className="text-xl font-bold flex items-center justify-center">
-              <Shield className="mr-2 h-6 w-6" />
-              CIS Audit Executor
-            </h1>
-          </div>
+          {/* Center: Heading */}
+          <h1 className="text-xl font-bold flex items-center justify-center mx-auto">
+            <Shield className="mr-2 h-6 w-6" />
+            CIS Audit Executor
+          </h1>
+          {/* Right: Empty, for symmetry if needed */}
+          <div className="w-32" />
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col p-6">
-        <div className="flex-1 flex flex-col items-center justify-center gap-8">
-          <Button variant="default" size="lg" className="w-[250px] bg-blue-800 hover:bg-blue-900">
+      <main className="flex-1 flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 w-full max-w-xs">
+          <Button
+            variant="default"
+            size="lg"
+            className="w-full bg-blue-800 hover:bg-blue-900"
+          >
             Complete Checks
-          </Button>
-          <Button variant="default" size="lg" className="w-[250px] bg-green-800 hover:bg-green-900">
-            Complete Fix
           </Button>
           <Button
             variant="default"
             size="lg"
-            className="w-[250px] bg-purple-800 hover:bg-purple-900"
+            className="w-full bg-purple-800 hover:bg-purple-900"
             onClick={handleExpertModeToggle}
           >
             Enter Expert Mode

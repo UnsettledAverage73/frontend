@@ -1,37 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from "./button";
 import { Switch } from "./ui/switch";
 import { cn } from "../lib/utils";
-
-const auditDirectories = [
-  { 
-    name: 'Network Security', 
-    subDirectories: [
-      {
-        name: 'Firewall',
-        scripts: ['network_chk_firewall.js', 'network_scan_ports.js']
-      },
-      {
-        name: 'Encryption',
-        scripts: ['network_chk_encryption.js']
-      }
-    ]
-  },
-  { 
-    name: 'User Access', 
-    subDirectories: [
-      {
-        name: 'Permissions',
-        scripts: ['user_chk_permissions.js', 'user_validate_roles.js']
-      },
-      {
-        name: 'Authentication',
-        scripts: ['user_chk_2fa.js']
-      }
-    ]
-  }
-];
 
 // Backup Panel Component
 const BackupPanel = ({ 
@@ -121,6 +92,7 @@ const BackupPanel = ({
 };
 
 const AdvancedAuditExecutor = () => {
+  const [auditList, setAuditList] = useState([]);
   const [selectedAudits, setSelectedAudits] = useState([]);
   const [executionLogs, setExecutionLogs] = useState('');
   const [auditResults, setAuditResults] = useState([]);
@@ -131,6 +103,38 @@ const AdvancedAuditExecutor = () => {
   // Backup-related states
   const [backups, setBackups] = useState([]);
   const [isBackupPanelOpen, setIsBackupPanelOpen] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState({});
+
+  // Device-related states
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [deviceList, setDeviceList] = useState([]);
+  const [selectedDevices, setSelectedDevices] = useState([]);
+
+  // Fetch audits from backend on mount
+  useEffect(() => {
+    fetch('http://localhost:8000/expert/audits')
+      .then(res => res.json())
+      .then(data => setAuditList(data.audits || []))
+      .catch(err => console.error('Failed to fetch audits:', err));
+  }, []);
+
+  // Fetch devices from backend on mount
+  useEffect(() => {
+    fetch('http://localhost:8000/devices')
+      .then(res => res.json())
+      .then(data => {
+        let devices = data.devices || [];
+        // Ensure "This Server" is always present
+        if (!devices.some(d => d.id === 'local')) {
+          devices = [
+            { id: 'local', name: 'This Server', ip: '127.0.0.1', status: 'connected', type: 'local' },
+            ...devices
+          ];
+        }
+        setDeviceList(devices);
+      })
+      .catch(err => console.error('Failed to fetch devices:', err));
+  }, []);
 
   // Create backup
   const createBackup = async () => {
@@ -165,91 +169,186 @@ const AdvancedAuditExecutor = () => {
     }
   };
 
-  // Render Audit Tree (existing method)
-  const renderAuditTree = () => {
-    return auditDirectories.map((dir) => {
-      const subDirs = dir.subDirectories.filter((subDir) =>
-        subDir.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      return (
-        <div key={dir.name} className="mb-4">
-          <h3 className="font-bold text-lg">{dir.name}</h3>
-          {subDirs.map((subDir) => (
-            <div key={subDir.name} className="ml-4">
-              <h4 className="font-medium text-md">{subDir.name}</h4>
-              <ul className="ml-4">
-                {subDir.scripts.map((script) => (
-                  <li key={script}>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedAudits.includes(script)}
-                        onChange={(e) => handleAuditSelection(script, e.target.checked)}
-                        className="form-checkbox"
-                      />
-                      <span className="text-sm">{script}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      );
-    });
-  };
-
-  // Handle audit selection toggle
-  const handleAuditSelection = (script, isChecked) => {
-    setSelectedAudits((prev) =>
-      isChecked ? [...prev, script] : prev.filter((item) => item !== script)
+  // Render Audit List from backend
+  const renderAuditList = () => {
+    const filtered = auditList.filter(audit =>
+      audit.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return (
+      <ul>
+        {filtered.map(audit => (
+          <li key={audit.path}>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={selectedAudits.includes(audit.path)}
+                onChange={e => {
+                  setSelectedAudits(prev =>
+                    e.target.checked
+                      ? [...prev, audit.path]
+                      : prev.filter(item => item !== audit.path)
+                  );
+                }}
+                className="form-checkbox"
+              />
+              <span className="text-sm">{audit.name}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
     );
   };
 
-  // Execute audits
-  const executeAudits = async () => {
-    // Create backup before execution
+  // Execute audits (update to use selectedAudits paths)
+  const executeAudits = async (devices) => {
     await createBackup();
-
-    setExecutionLogs((prev) => prev + '\nExecuting selected audits...\n');
+    setExecutionLogs(prev => prev + '\nExecuting selected audits...\n');
     setProgress(0);
     setAuditResults([]);
-
     try {
-      const totalAudits = selectedAudits.length;
-      for (let i = 0; i < totalAudits; i++) {
-        const audit = selectedAudits[i];
-        
-        // Simulate audit execution
-        setExecutionLogs((prev) => prev + `Running: ${audit}\n`);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        
-        // Update progress and logs
-        const status = isDryRun ? 'simulated' : 'passed';
-        setAuditResults((prev) => [...prev, {
-          name: audit,
-          status: status,
-          details: isDryRun ? 'Simulated audit execution' : 'Audit passed successfully'
-        }]);
-        
-        setExecutionLogs((prev) => prev + `Completed: ${audit}\n`);
-        setProgress(((i + 1) / totalAudits) * 100);
-      }
-
-      setExecutionLogs((prev) => prev + (isDryRun 
-        ? 'Simulation completed successfully.\n' 
-        : 'All audits executed successfully.\n')
-      );
+      const response = await fetch('http://localhost:8000/expert/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audits: selectedAudits,
+          dry_run: isDryRun,
+          devices: devices // send selected device IDs to backend
+        })
+      });
+      const data = await response.json();
+      setAuditResults(data.results || []);
+      setExecutionLogs(prev => prev + 'Execution finished.\n');
+      setProgress(100);
     } catch (error) {
-      setExecutionLogs((prev) => prev + `Error during execution: ${error.message}\n`);
-      setAuditResults((prev) => [...prev, {
+      setExecutionLogs(prev => prev + `Error during execution: ${error.message}\n`);
+      setAuditResults(prev => [...prev, {
         name: 'Execution Error',
         status: 'failed',
         details: error.message
       }]);
-    } finally {
       setProgress(100);
     }
+  };
+
+  function buildTree(audits) {
+    const root = {};
+    audits.forEach(({ path, name }) => {
+      const parts = path.replace(/^rhel\/v8\//, '').split('/');
+      let node = root;
+      parts.forEach((part, idx) => {
+        if (idx === parts.length - 1) {
+          // It's a file
+          if (!node.files) node.files = [];
+          node.files.push({ name, path });
+        } else {
+          // It's a directory
+          if (!node[part]) node[part] = {};
+          node = node[part];
+        }
+      });
+    });
+    return root;
+  }
+
+  function toggleFolder(path) {
+    setExpandedFolders(prev => ({
+      ...prev,
+      [path]: !prev[path]
+    }));
+  }
+
+  function isFolderExpanded(path) {
+    return !!expandedFolders[path];
+  }
+
+  function areAllFilesSelected(files) {
+    return files.every(file => selectedAudits.includes(file.path));
+  }
+
+  function toggleSelectAll(files) {
+    const allSelected = areAllFilesSelected(files);
+    setSelectedAudits(prev => {
+      if (allSelected) {
+        // Deselect all
+        return prev.filter(item => !files.some(file => file.path === item));
+      } else {
+        // Select all
+        const newSelections = files.map(file => file.path).filter(path => !prev.includes(path));
+        return [...prev, ...newSelections];
+      }
+    });
+  }
+
+  function renderTree(node, parentPath = '') {
+    return (
+      <ul>
+        {Object.entries(node)
+          .filter(([key]) => key !== 'files')
+          .map(([dir, subNode]) => {
+            const folderPath = parentPath ? `${parentPath}/${dir}` : dir;
+            const files = subNode.files || [];
+            return (
+              <li key={folderPath} className="ml-2">
+                <div className="flex items-center space-x-2 cursor-pointer">
+                  <span onClick={() => toggleFolder(folderPath)}>
+                    {isFolderExpanded(folderPath) ? '▼' : '▶'}
+                  </span>
+                  <span className="font-bold" onClick={() => toggleFolder(folderPath)}>
+                    {dir}
+                  </span>
+                  {files.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs px-2 py-1 border rounded ml-2"
+                      onClick={() => toggleSelectAll(files)}
+                    >
+                      {areAllFilesSelected(files) ? 'Deselect All' : 'Select All'}
+                    </button>
+                  )}
+                </div>
+                {isFolderExpanded(folderPath) && (
+                  <div className="ml-4">
+                    {renderTree(subNode, folderPath)}
+                    {files.length > 0 && (
+                      <ul>
+                        {files.map(file => (
+                          <li key={file.path} className="ml-2">
+                            <label className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedAudits.includes(file.path)}
+                                onChange={e => {
+                                  setSelectedAudits(prev =>
+                                    e.target.checked
+                                      ? [...prev, file.path]
+                                      : prev.filter(item => item !== file.path)
+                                  );
+                                }}
+                                className="form-checkbox"
+                              />
+                              <span
+                                className={`text-sm ${selectedAudits.includes(file.path) ? 'font-semibold text-green-700' : ''}`}
+                              >
+                                {file.name}
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+      </ul>
+    );
+  }
+
+  const auditTree = buildTree(auditList);
+
+  const openDeviceModal = () => {
+    setShowDeviceModal(true);
   };
 
   return (
@@ -261,6 +360,71 @@ const AdvancedAuditExecutor = () => {
         backups={backups}
         onViewBackup={handleViewBackup}
       />
+
+      {showDeviceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Select Devices</h2>
+            <div className="mb-4">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selectedDevices.length === deviceList.length}
+                  onChange={e => setSelectedDevices(e.target.checked ? deviceList.map(d => d.id) : [])}
+                />
+                <span className="ml-2">All Devices</span>
+              </label>
+              <ul>
+                {deviceList.map(device => (
+                  <li key={device.id}>
+                    <label className={`flex items-center ${device.status !== 'connected' ? 'opacity-50' : ''}`}>
+                      <input
+                        type="checkbox"
+                        disabled={device.status !== 'connected'}
+                        checked={selectedDevices.includes(device.id)}
+                        onChange={e => {
+                          setSelectedDevices(prev =>
+                            e.target.checked
+                              ? [...prev, device.id]
+                              : prev.filter(id => id !== device.id)
+                          );
+                        }}
+                      />
+                      <span className="ml-2">
+                        {device.name} ({device.ip})
+                        {device.type === 'local' && <span className="ml-1 text-blue-600">(This Server)</span>}
+                        {device.status === 'connected' ? (
+                          <span className="ml-2 text-green-600">● Connected</span>
+                        ) : (
+                          <span className="ml-2 text-red-600">● Not Connected</span>
+                        )}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                className="px-4 py-2 bg-gray-300 rounded"
+                onClick={() => setShowDeviceModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-green-600 text-white rounded"
+                onClick={() => {
+                  setShowDeviceModal(false);
+                  executeAudits(selectedDevices);
+                }}
+                disabled={selectedDevices.length === 0}
+              >
+                Run on Selected
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Advanced Audit Executor</h1>
@@ -284,7 +448,7 @@ const AdvancedAuditExecutor = () => {
               <input
                 type="checkbox"
                 checked={isDryRun}
-                onChange={(e) => setIsDryRun(e.target.checked)}
+                onChange={e => setIsDryRun(e.target.checked)}
                 className="form-checkbox"
               />
               <span className="text-sm">
@@ -296,14 +460,14 @@ const AdvancedAuditExecutor = () => {
             type="text"
             placeholder="Search audits..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
             className="w-full p-2 border rounded mb-4"
           />
           <div className="overflow-auto max-h-96">
-            {renderAuditTree()}
+            {renderTree(auditTree)}
           </div>
           <button
-            onClick={executeAudits}
+            onClick={openDeviceModal}
             disabled={selectedAudits.length === 0}
             className={`w-full mt-4 px-4 py-2 rounded ${
               selectedAudits.length === 0 
@@ -327,21 +491,16 @@ const AdvancedAuditExecutor = () => {
         <div className="border rounded-lg p-4">
           <h2 className="text-xl font-semibold mb-2">Results</h2>
           <div className="space-y-2 overflow-auto max-h-96">
-            {auditResults.map((result, index) => (
-              <div
-                key={index}
-                className={`p-2 rounded ${
-                  result.status === 'passed' ? 'bg-green-100' :
-                  result.status === 'failed' ? 'bg-red-100' :
-                  result.status === 'simulated' ? 'bg-blue-100' :
-                  'bg-yellow-100'
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">{result.name}</span>
-                  <span>{result.status.toUpperCase()}</span>
+            {auditResults.map((result, idx) => (
+              <div key={idx} className="mb-4">
+                <div className="font-bold">{result.device} - {result.script}</div>
+                <div className="text-xs bg-gray-100 p-2 rounded border mt-1">
+                  <pre>{result.log}</pre>
                 </div>
-                <p className="text-sm mt-1 whitespace-pre-line">{result.details}</p>
+                <div className="mt-1">
+                  <span className="font-semibold">Summary:</span>
+                  <pre className="text-green-700">{result.summary}</pre>
+                </div>
               </div>
             ))}
           </div>
