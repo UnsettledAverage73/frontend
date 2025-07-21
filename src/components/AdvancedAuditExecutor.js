@@ -5,6 +5,8 @@ import { Switch } from "./ui/switch";
 import { cn } from "../lib/utils";
 import Progress from "./ui/progress";
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://his-2k24.onrender.com';
+
 // Tesla-inspired color palette
 const colors = {
   primary: '#e82127', // Tesla red
@@ -153,7 +155,7 @@ const AdvancedAuditExecutor = () => {
   // Fetch audits from backend on mount
   useEffect(() => {
     setExecutionLogs('Fetching audit scripts from server...\n');
-    fetch('https://his-2k24.onrender.com/expert/audits')
+    fetch(`${BACKEND_URL}/expert/audits`)
       .then(res => res.json())
       .then(data => {
         setAuditList(data.audits || []);
@@ -168,7 +170,7 @@ const AdvancedAuditExecutor = () => {
   // Fetch devices from backend on mount
   useEffect(() => {
     setExecutionLogs('Fetching connected devices...\n');
-    fetch('https://his-2k24.onrender.com/devices')
+    fetch(`${BACKEND_URL}/devices`)
       .then(res => res.json())
       .then(data => {
         let devices = data.devices || [];
@@ -418,7 +420,7 @@ const AdvancedAuditExecutor = () => {
         });
       }, 500);
 
-      const response = await fetch('https://his-2k24.onrender.com/expert/execute', {
+      const response = await fetch(`${BACKEND_URL}/expert/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

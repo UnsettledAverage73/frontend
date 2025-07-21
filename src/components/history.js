@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'https://his-2k24.onrender.com/history'; // Change if backend runs elsewhere
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://his-2k24.onrender.com';
+const API_URL = `${BACKEND_URL}/history`; // Change if backend runs elsewhere
 
 const History = ({ refreshTrigger }) => {
   const [historyData, setHistoryData] = useState([]);
