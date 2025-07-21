@@ -15,6 +15,7 @@ const Devices = () => {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">Connected Devices</h1>
         
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {devices.map((device) => (
             <div 

@@ -1,38 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-const History = () => {
-  const historyData = [
-    {
-      id: 1,
-      action: "Security Check",
-      status: "Completed",
-      timestamp: "2024-03-03 14:30:00",
-      details: "Full system scan completed successfully",
-      system: "Server-DB-01"
-    },
-    {
-      id: 2,
-      action: "Vulnerability Fix",
-      status: "Failed",
-      timestamp: "2024-03-02 09:15:00",
-      details: "Critical security patches application failed",
-      system: "Laptop-Dev-01"
-    },
-    {
-      id: 3,
-      action: "Configuration Audit",
-      status: "Completed",
-      timestamp: "2024-03-01 16:45:00",
-      details: "System configurations verified",
-      system: "Router-Main"
+const API_URL = 'http://localhost:8000/history'; // Change if backend runs elsewhere
+
+const History = ({ refreshTrigger }) => {
+  const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(API_URL);
+      if (!response.ok) throw new Error('Failed to fetch history');
+      const data = await response.json();
+      setHistoryData(Array.isArray(data) ? data : (data.history || []));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [refreshTrigger]); // fetch on mount and when refreshTrigger changes
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Audit History</h1>
-        
+        <h1 className="text-2xl font-bold mb-6">Audit History <span className="text-xs text-gray-400">(Realtime)</span></h1>
+        {loading && <p className="text-gray-400">Loading...</p>}
+        {error && <p className="text-red-500">{error}</p>}
         <div className="space-y-4">
           {historyData.map((item) => (
             <div 
