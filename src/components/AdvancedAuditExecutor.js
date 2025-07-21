@@ -153,7 +153,7 @@ const AdvancedAuditExecutor = () => {
   // Fetch audits from backend on mount
   useEffect(() => {
     setExecutionLogs('Fetching audit scripts from server...\n');
-    fetch('http://localhost:8000/expert/audits')
+    fetch('https://his-2k24.onrender.com/expert/audits')
       .then(res => res.json())
       .then(data => {
         setAuditList(data.audits || []);
@@ -168,7 +168,7 @@ const AdvancedAuditExecutor = () => {
   // Fetch devices from backend on mount
   useEffect(() => {
     setExecutionLogs('Fetching connected devices...\n');
-    fetch('http://localhost:8000/devices')
+    fetch('https://his-2k24.onrender.com/devices')
       .then(res => res.json())
       .then(data => {
         let devices = data.devices || [];
@@ -418,7 +418,7 @@ const AdvancedAuditExecutor = () => {
         });
       }, 500);
 
-      const response = await fetch('http://localhost:8000/expert/execute', {
+      const response = await fetch('https://his-2k24.onrender.com/expert/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
